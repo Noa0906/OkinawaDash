@@ -24,7 +24,7 @@ passport.deserializeUser((obj, done) => done(null, obj));
 passport.use(new DiscordStrategy({
     clientID: "1410973375408504875",
     clientSecret: "JiBQWusqAlR48nLy8rmzza6E0w88p9zv",
-    callbackURL: "okinawa-dash.vercel.app/callback",
+    callbackURL: "https://okinawa-dash.vercel.app/callback",
     scope: ["identify", "email"]
 }, (accessToken, refreshToken, profile, done) => {
     return done(null, profile);
@@ -69,5 +69,5 @@ app.post("/local-login", (req, res) => {
 
 
 app.listen(3000, () => {
-    console.log("✅ 서버 실행 중: okinawa-dash.vercel.app");
+    console.log("✅ 서버 실행 중: https://okinawa-dash.vercel.app");
 });
