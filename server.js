@@ -24,7 +24,7 @@ passport.deserializeUser((obj, done) => done(null, obj));
 passport.use(new DiscordStrategy({
     clientID: "1410973375408504875",
     clientSecret: "JiBQWusqAlR48nLy8rmzza6E0w88p9zv",
-    callbackURL: "https://okinawadash.onrender.com/callback",
+    callbackURL: "https://okinawadash.onrender.com",
     scope: ["identify", "email"]
 }, (accessToken, refreshToken, profile, done) => {
     return done(null, profile);
