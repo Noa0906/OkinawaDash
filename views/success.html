@@ -173,53 +173,6 @@
             font-weight: 500;
         }
 
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: #40444b;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            transition: transform 0.2s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-        }
-
-        .stat-icon {
-            width: 48px;
-            height: 48px;
-            margin: 0 auto 12px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-
-        .stat-icon.blue { background: #5865f2; }
-        .stat-icon.green { background: #57f287; }
-        .stat-icon.orange { background: #ffa500; }
-        .stat-icon.red { background: #ed4245; }
-
-        .stat-title {
-            font-size: 14px;
-            color: #b9bbbe;
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: 600;
-        }
-
         /* Content Sections */
         .content-section {
             display: none;
@@ -471,6 +424,10 @@
                     <div class="nav-item-icon">🏷️</div>
                     제목설정
                 </a>
+                <a href="#" class="nav-item" data-section="gif">
+                    <div class="nav-item-icon">🎬</div>
+                    GIF 설정
+                </a>
             </div>
 
             <a href="/logout" class="logout-btn">로그아웃</a>
@@ -656,47 +613,41 @@
                     <button class="btn">설정 저장</button>
                 </div>
             </div>
+
             <!-- GIF Settings Section -->
             <div id="gif" class="content-section">
                 <div class="header">
                     <h1>GIF 설정</h1>
-                    <p>티켓 관련 GIF 이미지를 설정하세요</p>
+                    <p>임베드에 표시될 GIF 이미지를 설정하세요</p>
                 </div>
 
                 <div class="settings-form">
                     <div class="form-group">
-                        <label class="form-label">티켓 생성 GIF URL</label>
-                        <input type="url" class="form-input" placeholder="https://example.com/ticket-created.gif">
+                        <label class="form-label">임베드 GIF URL</label>
+                        <input type="url" id="gifUrl" class="form-input" placeholder="https://example.com/embed-image.gif" value="">
                         <small style="color: #b9bbbe; font-size: 12px; margin-top: 4px; display: block;">
-                            티켓이 생성될 때 표시되는 GIF 이미지 URL을 입력하세요
+                            티켓 생성 임베드에 표시될 GIF 이미지 URL을 입력하세요
                         </small>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">티켓 완료 GIF URL</label>
-                        <input type="url" class="form-input" placeholder="https://example.com/ticket-completed.gif">
-                        <small style="color: #b9bbbe; font-size: 12px; margin-top: 4px; display: block;">
-                            티켓이 완료될 때 표시되는 GIF 이미지 URL을 입력하세요
-                        </small>
+                        <label class="form-label">GIF 미리보기</label>
+                        <div style="background: #2f3136; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid #40444b;">
+                            <div id="gifPreview" style="color: #8e9297; font-style: italic;">
+                                GIF URL을 입력하면 여기에 미리보기가 표시됩니다
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">환영 GIF URL</label>
-                        <input type="url" class="form-input" placeholder="https://example.com/welcome.gif">
-                        <small style="color: #b9bbbe; font-size: 12px; margin-top: 4px; display: block;">
-                            사용자가 티켓 채널에 입장했을 때 표시되는 GIF 이미지 URL을 입력하세요
-                        </small>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">GIF 표시 여부</label>
-                        <select class="form-input">
-                            <option value="enabled">활성화</option>
-                            <option value="disabled">비활성화</option>
+                        <label class="form-label">GIF 표시 설정</label>
+                        <select class="form-input" id="gifEnabled">
+                            <option value="enabled">GIF 표시 활성화</option>
+                            <option value="disabled">GIF 표시 비활성화</option>
                         </select>
                     </div>
 
-                    <button class="btn">GIF 설정 저장</button>
+                    <button class="btn" id="saveGifBtn">GIF 설정 저장</button>
                 </div>
             </div>
         </main>
@@ -738,7 +689,7 @@
         });
 
         function initGifManagement() {
-            const gifUrlInput = document.querySelector('#gif .form-input[type="url"]');
+            const gifUrlInput = document.getElementById('gifUrl');
             const gifPreview = document.getElementById('gifPreview');
             const saveGifBtn = document.getElementById('saveGifBtn');
 
