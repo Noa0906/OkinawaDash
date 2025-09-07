@@ -6,10 +6,11 @@ const path = require("path");
 const fs = require("fs");
 
 const app = express();
-
-app.use(express.json()); // ✅ JSON API 요청 처리
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+// 세션 설정
 app.use(session({
     secret: "super-secret-key",
     resave: false,
@@ -22,71 +23,110 @@ app.use(passport.session());
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
+// Discord 로그인 전략 (선택: 필요 없으면 제거 가능)
 passport.use(new DiscordStrategy({
     clientID: "1410973375408504875",
     clientSecret: "JiBQWusqAlR48nLy8rmzza6E0w88p9zv",
     callbackURL: "https://okinawadash.onrender.com/callback",
-    scope: ["identify", "guilds"] // ✅ guilds 권한 추가 (서버 확인용)
+    scope: ["identify", "guilds"]
 }, (accessToken, refreshToken, profile, done) => {
     return done(null, profile);
 }));
 
-// JSON 파일 경로
-const configFile = path.join(__dirname, "data", "ticket_config.json");
+// webaccounts.json 로드/저장
+const WEB_ACCOUNTS_FILE = path.join(__dirname, "data", "webaccounts.json");
 
-// 설정 파일 읽기
-function loadConfig() {
-    if (fs.existsSync(configFile)) {
-        return JSON.parse(fs.readFileSync(configFile, "utf8"));
+function loadWebAccounts() {
+    if (fs.existsSync(WEB_ACCOUNTS_FILE)) {
+        return JSON.parse(fs.readFileSync(WEB_ACCOUNTS_FILE, "utf8"));
     }
-    return { servers: {} };
+    return {};
 }
 
-// 설정 파일 저장
-function saveConfig(config) {
-    fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
-}
-
-// ===== 기본 라우트 =====
+// ========== 기본 페이지 ==========
 app.get("/", (req, res) => {
-    if (req.isAuthenticated()) {
+    if (req.session.guildId) {
         return res.redirect("/success");
     }
     res.sendFile(path.join(__dirname, "views", "index.html"));
 });
 
+// ========== Discord 로그인 ==========
 app.get("/login", passport.authenticate("discord"));
 
-app.get("/callback", passport.authenticate("discord", {
-    failureRedirect: "/"
-}), (req, res) => {
+app.get("/callback", passport.authenticate("discord", { failureRedirect: "/" }), (req, res) => {
     res.redirect("/success");
 });
 
-app.get("/success", (req, res) => {
-    if (!req.isAuthenticated()) return res.redirect("/");
-    res.sendFile(path.join(__dirname, "views", "success.html"));
+// ========== WebAccount (아이디/비번) 로그인 ==========
+app.post("/local-login", (req, res) => {
+    const { username, password } = req.body;
+    const accounts = loadWebAccounts();
+
+    const account = Object.values(accounts).find(acc => acc.username === username && acc.password === password);
+
+    if (!account) {
+        return res.status(401).json({ error: "아이디 또는 비밀번호가 잘못되었습니다." });
+    }
+
+    // ✅ 로그인 성공 → 세션에 guildId 저장
+    req.session.guildId = account.guildId;
+    req.session.username = account.username;
+
+    res.json({ success: true, guildId: account.guildId });
 });
 
+// 로그아웃
 app.get("/logout", (req, res) => {
-    req.logout(() => {
+    req.session.destroy(() => {
         res.redirect("/");
     });
 });
 
-// ===== 설정 API =====
+// ========== 패널 접근 ==========
+app.get("/success", (req, res) => {
+    if (!req.session.guildId) return res.redirect("/");
+    res.sendFile(path.join(__dirname, "views", "success.html"));
+});
+
+// ========== 티켓 설정 API ==========
+const CONFIG_FILE = path.join(__dirname, "data", "ticket_config.json");
+
+function loadConfig() {
+    if (fs.existsSync(CONFIG_FILE)) {
+        return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
+    }
+    return { servers: {} };
+}
+
+function saveConfig(config) {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+}
+
+function ensureServerConfig(config, guildId) {
+    if (!config.servers[guildId]) {
+        config.servers[guildId] = {
+            buttons: [],
+            categories: {},
+            sellerRoles: [],
+            embed: {},
+            notice: {},
+            title: {}
+        };
+    }
+}
 
 // 버튼 저장
 app.post("/api/ticket-config/button", (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "인증 필요" });
+    if (!req.session.guildId) return res.status(401).json({ error: "로그인이 필요합니다." });
 
-    const { guildId, button } = req.body;
-    if (!guildId || !button) return res.status(400).json({ error: "guildId와 button은 필수입니다." });
+    const { button } = req.body;
+    const guildId = req.session.guildId;
+
+    if (!button) return res.status(400).json({ error: "button 데이터는 필수입니다." });
 
     const config = loadConfig();
-    if (!config.servers[guildId]) {
-        config.servers[guildId] = { buttons: [], categories: {}, sellerRoles: [], embed: {}, notice: {}, title: {} };
-    }
+    ensureServerConfig(config, guildId);
 
     const idx = config.servers[guildId].buttons.findIndex(b => b.id === button.id);
     if (idx >= 0) {
@@ -101,13 +141,15 @@ app.post("/api/ticket-config/button", (req, res) => {
 
 // 임베드 저장
 app.post("/api/ticket-config/embed", (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "인증 필요" });
+    if (!req.session.guildId) return res.status(401).json({ error: "로그인이 필요합니다." });
 
-    const { guildId, embed } = req.body;
-    if (!guildId || !embed) return res.status(400).json({ error: "guildId와 embed는 필수입니다." });
+    const { embed } = req.body;
+    const guildId = req.session.guildId;
+
+    if (!embed) return res.status(400).json({ error: "embed 데이터는 필수입니다." });
 
     const config = loadConfig();
-    if (!config.servers[guildId]) config.servers[guildId] = { buttons: [], categories: {}, sellerRoles: [], embed: {}, notice: {}, title: {} };
+    ensureServerConfig(config, guildId);
 
     config.servers[guildId].embed = embed;
     saveConfig(config);
@@ -117,13 +159,15 @@ app.post("/api/ticket-config/embed", (req, res) => {
 
 // 공지 저장
 app.post("/api/ticket-config/notice", (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "인증 필요" });
+    if (!req.session.guildId) return res.status(401).json({ error: "로그인이 필요합니다." });
 
-    const { guildId, notice } = req.body;
-    if (!guildId || !notice) return res.status(400).json({ error: "guildId와 notice는 필수입니다." });
+    const { notice } = req.body;
+    const guildId = req.session.guildId;
+
+    if (!notice) return res.status(400).json({ error: "notice 데이터는 필수입니다." });
 
     const config = loadConfig();
-    if (!config.servers[guildId]) config.servers[guildId] = { buttons: [], categories: {}, sellerRoles: [], embed: {}, notice: {}, title: {} };
+    ensureServerConfig(config, guildId);
 
     config.servers[guildId].notice = notice;
     saveConfig(config);
@@ -133,13 +177,15 @@ app.post("/api/ticket-config/notice", (req, res) => {
 
 // 제목 저장
 app.post("/api/ticket-config/title", (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "인증 필요" });
+    if (!req.session.guildId) return res.status(401).json({ error: "로그인이 필요합니다." });
 
-    const { guildId, title } = req.body;
-    if (!guildId || !title) return res.status(400).json({ error: "guildId와 title은 필수입니다." });
+    const { title } = req.body;
+    const guildId = req.session.guildId;
+
+    if (!title) return res.status(400).json({ error: "title 데이터는 필수입니다." });
 
     const config = loadConfig();
-    if (!config.servers[guildId]) config.servers[guildId] = { buttons: [], categories: {}, sellerRoles: [], embed: {}, notice: {}, title: {} };
+    ensureServerConfig(config, guildId);
 
     config.servers[guildId].title = title;
     saveConfig(config);
@@ -147,7 +193,7 @@ app.post("/api/ticket-config/title", (req, res) => {
     res.json({ success: true, config: config.servers[guildId] });
 });
 
-// ===== 서버 실행 =====
+// ========== 서버 실행 ==========
 app.listen(3000, () => {
     console.log("✅ 서버 실행 중: https://okinawadash.onrender.com");
 });
