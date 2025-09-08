@@ -23,7 +23,8 @@
       <div class="bg-gray-900 p-8 rounded-xl shadow-lg w-96">
         <h2 class="text-xl font-bold mb-6">Okinawa Service Login</h2>
         
-        <form action="/login" method="POST" class="space-y-4">
+        <!-- ✅ webaccounts.json 계정 로그인 전용 -->
+        <form action="/local-login" method="POST" class="space-y-4">
           <div>
             <label class="block text-sm mb-1">아이디 (ID)</label>
             <input 
@@ -50,14 +51,6 @@
             Login
           </button>
         </form>
-
-        <!-- 하단 작은 링크 -->
-<!-- 하단 작은 링크 -->
-<div class="mt-6 text-sm text-gray-400 text-center">
-  <a href="/login" class="block text-purple-400 hover:underline">디스코드 로그인</a>
-  <a href="/register" class="block mt-1 hover:underline">회원가입</a>
-</div>
-        </div>
       </div>
     </div>
   </div>
