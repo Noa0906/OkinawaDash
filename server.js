@@ -33,8 +33,8 @@ passport.use(new DiscordStrategy({
     return done(null, profile);
 }));
 
-// webaccounts.json 로드/저장
-const WEB_ACCOUNTS_FILE = path.join(__dirname, "data", "webaccounts.json");
+// webaccounts.json 로드/저장 (루트 경로 사용)
+const WEB_ACCOUNTS_FILE = path.join(__dirname, "webaccounts.json");
 
 function loadWebAccounts() {
     if (fs.existsSync(WEB_ACCOUNTS_FILE)) {
