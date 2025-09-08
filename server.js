@@ -1,7 +1,5 @@
 const express = require("express");
 const session = require("express-session");
-const passport = require("passport");
-const DiscordStrategy = require("passport-discord").Strategy;
 const path = require("path");
 const fs = require("fs");
 
@@ -15,22 +13,6 @@ app.use(session({
     secret: "super-secret-key",
     resave: false,
     saveUninitialized: false
-}));
-
-app.use(passport.initialize());
-app.use(passport.session());
-
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((obj, done) => done(null, obj));
-
-// Discord 로그인 전략 (선택: 필요 없으면 제거 가능)
-passport.use(new DiscordStrategy({
-    clientID: "1410973375408504875",
-    clientSecret: "JiBQWusqAlR48nLy8rmzza6E0w88p9zv",
-    callbackURL: "https://okinawadash.onrender.com/callback",
-    scope: ["identify", "guilds"]
-}, (accessToken, refreshToken, profile, done) => {
-    return done(null, profile);
 }));
 
 // webaccounts.json 로드/저장 (루트 경로 사용)
@@ -51,19 +33,14 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "views", "index.html"));
 });
 
-// ========== Discord 로그인 ==========
-app.get("/login", passport.authenticate("discord"));
-
-app.get("/callback", passport.authenticate("discord", { failureRedirect: "/" }), (req, res) => {
-    res.redirect("/success");
-});
-
 // ========== WebAccount (아이디/비번) 로그인 ==========
 app.post("/local-login", (req, res) => {
     const { username, password } = req.body;
     const accounts = loadWebAccounts();
 
-    const account = Object.values(accounts).find(acc => acc.username === username && acc.password === password);
+    const account = Object.values(accounts).find(
+        acc => acc.username === username && acc.password === password
+    );
 
     if (!account) {
         return res.status(401).json({ error: "아이디 또는 비밀번호가 잘못되었습니다." });
